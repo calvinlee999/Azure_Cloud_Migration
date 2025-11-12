@@ -3,6 +3,9 @@
 ## Overview
 This repository contains documentation, tools, and resources for migrating on-premises workloads to Microsoft Azure using Azure Migrate and related services.
 
+## Project Context
+This migration project is led by the **Director of Platform Engineering** role at Chatham Financial. For detailed information about the role, responsibilities, and strategic alignment, see [Chatham Financial - Director of Platform Engineering](docs/chatham-financial-role.md).
+
 ## Project Goal
 Migrate on-premises servers, databases, and applications to Azure cloud platform with minimal downtime, optimized cost, and enhanced security.
 
