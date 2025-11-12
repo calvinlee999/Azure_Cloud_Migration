@@ -20,36 +20,38 @@ This document provides high-level reference architectures for migrating on-premi
 This architecture shows the complete migration ecosystem including on-premises infrastructure, Azure Migrate components, and target Azure environment.
 
 ```mermaid
-architecture-beta
-    group onprem(server)[On-Premises Environment]
-    group azure_migrate(cloud)[Azure Migrate Hub]
-    group azure_target(cloud)[Azure Target Environment]
+flowchart LR
+    subgraph OnPrem["On-Premises Environment"]
+        VMware[VMware vCenter]
+        HyperV[Hyper-V Hosts]
+        Physical[Physical Servers]
+        SQLServers[SQL Servers]
+    end
     
-    service vmware(server)[VMware vCenter] in onprem
-    service hyperv(server)[Hyper-V Hosts] in onprem
-    service physical(server)[Physical Servers] in onprem
-    service databases(database)[SQL Servers] in onprem
+    subgraph AzureMigrate["Azure Migrate Hub"]
+        Appliance[Migrate Appliance]
+        Assessment[Assessment Engine]
+        Replication[Replication Service]
+    end
     
-    service appliance(server)[Migrate Appliance] in azure_migrate
-    service assessment(server)[Assessment Engine] in azure_migrate
-    service replication(server)[Replication Service] in azure_migrate
+    subgraph AzureTarget["Azure Target Environment"]
+        AzureVMs[Azure VMs]
+        AzureSQL[Azure SQL]
+        Storage[Azure Storage]
+        VNet[Virtual Network]
+    end
     
-    service vms(server)[Azure VMs] in azure_target
-    service sql(database)[Azure SQL] in azure_target
-    service storage(disk)[Azure Storage] in azure_target
-    service network(internet)[Virtual Network] in azure_target
+    VMware --> Appliance
+    HyperV --> Appliance
+    Physical --> Appliance
+    SQLServers --> Appliance
     
-    vmware:R --> L:appliance
-    hyperv:R --> L:appliance
-    physical:R --> L:appliance
-    databases:R --> L:appliance
-    
-    appliance:R --> L:assessment
-    assessment:R --> L:replication
-    replication:R --> L:vms
-    replication:R --> L:sql
-    vms:B --> T:storage
-    sql:B --> T:network
+    Appliance --> Assessment
+    Assessment --> Replication
+    Replication --> AzureVMs
+    Replication --> AzureSQL
+    AzureVMs --> Storage
+    AzureSQL --> VNet
 ```
 
 **Key Components:**
@@ -67,32 +69,38 @@ architecture-beta
 This architecture demonstrates the recommended network topology for enterprise Azure deployments, providing centralized governance and security.
 
 ```mermaid
-architecture-beta
-    group hub(cloud)[Hub VNet - Shared Services]
-    group spoke1(cloud)[Spoke VNet - Production]
-    group spoke2(cloud)[Spoke VNet - Development]
-    group spoke3(cloud)[Spoke VNet - DMZ]
+flowchart TD
+    subgraph Hub["Hub VNet - Shared Services"]
+        Firewall[Azure Firewall]
+        Gateway[VPN Gateway]
+        Bastion[Azure Bastion]
+        DNS[Private DNS]
+    end
     
-    service firewall(server)[Azure Firewall] in hub
-    service gateway(internet)[VPN Gateway] in hub
-    service bastion(server)[Azure Bastion] in hub
-    service dns(server)[Private DNS] in hub
+    subgraph Spoke1["Spoke VNet - Production"]
+        WebApp1[Web Apps]
+        DB1[Databases]
+    end
     
-    service webapp1(server)[Web Apps] in spoke1
-    service db1(database)[Databases] in spoke1
-    service webapp2(server)[Dev Apps] in spoke2
-    service db2(database)[Dev DB] in spoke2
-    service lb(internet)[Load Balancer] in spoke3
-    service appgw(internet)[App Gateway] in spoke3
+    subgraph Spoke2["Spoke VNet - Development"]
+        WebApp2[Dev Apps]
+        DB2[Dev DB]
+    end
     
-    gateway:R --> L:firewall
-    firewall:B --> T:dns
-    firewall:R --> L:webapp1
-    firewall:R --> L:webapp2
-    firewall:R --> L:lb
-    webapp1:B --> T:db1
-    webapp2:B --> T:db2
-    lb:R --> L:appgw
+    subgraph Spoke3["Spoke VNet - DMZ"]
+        LB[Load Balancer]
+        AppGW[App Gateway]
+    end
+    
+    Gateway --> Firewall
+    Firewall --> DNS
+    Firewall --> Spoke1
+    Firewall --> Spoke2
+    Firewall --> Spoke3
+    
+    WebApp1 --> DB1
+    WebApp2 --> DB2
+    LB --> AppGW
 ```
 
 **Architecture Benefits:**
@@ -110,31 +118,33 @@ architecture-beta
 Azure Landing Zones provide the foundation for secure, compliant, and scalable Azure deployments.
 
 ```mermaid
-architecture-beta
-    group management(cloud)[Management Groups]
-    group platform(cloud)[Platform Subscriptions]
-    group landing(cloud)[Landing Zone Subscriptions]
+flowchart TD
+    subgraph Management["Management Groups"]
+        Root[Root MG]
+        Policy[Azure Policy]
+        RBAC[RBAC]
+    end
     
-    service root(server)[Root MG] in management
-    service policy(server)[Azure Policy] in management
-    service rbac(server)[RBAC] in management
+    subgraph Platform["Platform Subscriptions"]
+        Identity[Identity]
+        Connectivity[Connectivity]
+        Monitoring[Management]
+    end
     
-    service identity(server)[Identity] in platform
-    service connectivity(internet)[Connectivity] in platform
-    service monitoring(server)[Management] in platform
+    subgraph Landing["Landing Zone Subscriptions"]
+        Prod[Production]
+        Dev[Development]
+        Sandbox[Sandbox]
+    end
     
-    service prod(server)[Production] in landing
-    service dev(server)[Development] in landing
-    service sandbox(server)[Sandbox] in landing
-    
-    root:R --> L:policy
-    policy:R --> L:rbac
-    rbac:B --> T:identity
-    identity:R --> L:connectivity
-    connectivity:R --> L:monitoring
-    monitoring:B --> T:prod
-    prod:R --> L:dev
-    dev:R --> L:sandbox
+    Root --> Policy
+    Policy --> RBAC
+    RBAC --> Identity
+    Identity --> Connectivity
+    Connectivity --> Monitoring
+    Monitoring --> Prod
+    Prod --> Dev
+    Dev --> Sandbox
 ```
 
 **Core Components:**
@@ -154,41 +164,44 @@ architecture-beta
 This architecture shows the technical flow for executing server and application migrations using Azure Site Recovery and Azure Migrate.
 
 ```mermaid
-architecture-beta
-    group source(server)[Source Environment]
-    group migration(cloud)[Migration Services]
-    group target(cloud)[Target Environment]
-    group mgmt(cloud)[Management & Monitoring]
+flowchart LR
+    subgraph Source["Source Environment"]
+        SrcVM[Source VMs]
+        SrcDB[Source DBs]
+        SrcApp[Applications]
+    end
     
-    service src_vm(server)[Source VMs] in source
-    service src_db(database)[Source DBs] in source
-    service src_app(server)[Applications] in source
+    subgraph Migration["Migration Services"]
+        ASR[Site Recovery]
+        DMS[Database Migration]
+        Migrate[Azure Migrate]
+    end
     
-    service asr(server)[Site Recovery] in migration
-    service dms(database)[Database Migration] in migration
-    service migrate(server)[Azure Migrate] in migration
+    subgraph Target["Target Environment"]
+        TgtVM[Azure VMs]
+        TgtDB[Azure SQL]
+        TgtApp[App Service]
+        Storage[Managed Disks]
+    end
     
-    service tgt_vm(server)[Azure VMs] in target
-    service tgt_db(database)[Azure SQL] in target
-    service tgt_app(server)[App Service] in target
-    service storage(disk)[Managed Disks] in target
+    subgraph Mgmt["Management & Monitoring"]
+        Monitor[Azure Monitor]
+        Backup[Azure Backup]
+        Security[Security Center]
+    end
     
-    service monitor(server)[Azure Monitor] in mgmt
-    service backup(disk)[Azure Backup] in mgmt
-    service security(server)[Security Center] in mgmt
+    SrcVM --> ASR
+    SrcDB --> DMS
+    SrcApp --> Migrate
     
-    src_vm:R --> L:asr
-    src_db:R --> L:dms
-    src_app:R --> L:migrate
+    ASR --> TgtVM
+    DMS --> TgtDB
+    Migrate --> TgtApp
     
-    asr:R --> L:tgt_vm
-    dms:R --> L:tgt_db
-    migrate:R --> L:tgt_app
-    
-    tgt_vm:B --> T:storage
-    tgt_vm:R --> L:monitor
-    tgt_db:R --> L:backup
-    tgt_app:R --> L:security
+    TgtVM --> Storage
+    TgtVM --> Monitor
+    TgtDB --> Backup
+    TgtApp --> Security
 ```
 
 **Migration Services:**
@@ -207,34 +220,36 @@ architecture-beta
 This architecture illustrates various data migration patterns for different scenarios and data volumes.
 
 ```mermaid
-architecture-beta
-    group onprem_data(server)[On-Premises Data]
-    group transfer(cloud)[Transfer Methods]
-    group azure_data(cloud)[Azure Data Services]
+flowchart LR
+    subgraph OnPremData["On-Premises Data"]
+        Files[File Servers]
+        SQL[SQL Databases]
+        Apps[App Data]
+    end
     
-    service files(disk)[File Servers] in onprem_data
-    service sql(database)[SQL Databases] in onprem_data
-    service apps(server)[App Data] in onprem_data
+    subgraph Transfer["Transfer Methods"]
+        DataBox[Data Box]
+        Express[ExpressRoute]
+        VPN[VPN Gateway]
+        DMSSvc[DMS]
+    end
     
-    service databox(disk)[Data Box] in transfer
-    service express(internet)[ExpressRoute] in transfer
-    service vpn(internet)[VPN Gateway] in transfer
-    service dms_svc(database)[DMS] in transfer
+    subgraph AzureData["Azure Data Services"]
+        Blob[Blob Storage]
+        AzureSQL[Azure SQL]
+        AzureFiles[Azure Files]
+        Cosmos[Cosmos DB]
+    end
     
-    service blob(disk)[Blob Storage] in azure_data
-    service azure_sql(database)[Azure SQL] in azure_data
-    service files_azure(disk)[Azure Files] in azure_data
-    service cosmos(database)[Cosmos DB] in azure_data
+    Files --> DataBox
+    SQL --> DMSSvc
+    Apps --> Express
+    Apps --> VPN
     
-    files:R --> L:databox
-    sql:R --> L:dms_svc
-    apps:R --> L:express
-    apps:R --> L:vpn
-    
-    databox:R --> L:blob
-    dms_svc:R --> L:azure_sql
-    express:R --> L:files_azure
-    vpn:R --> L:cosmos
+    DataBox --> Blob
+    DMSSvc --> AzureSQL
+    Express --> AzureFiles
+    VPN --> Cosmos
 ```
 
 **Data Migration Methods:**
@@ -258,46 +273,49 @@ architecture-beta
 This architecture demonstrates defense-in-depth security and comprehensive governance for migrated workloads.
 
 ```mermaid
-architecture-beta
-    group identity(server)[Identity & Access]
-    group network(internet)[Network Security]
-    group data(database)[Data Protection]
-    group governance(cloud)[Governance & Compliance]
+flowchart TD
+    subgraph Identity["Identity & Access"]
+        Entra[Entra ID]
+        MFA[MFA]
+        PIM[PIM]
+    end
     
-    service entra(server)[Entra ID] in identity
-    service mfa(server)[MFA] in identity
-    service pim(server)[PIM] in identity
+    subgraph Network["Network Security"]
+        NSG[NSG]
+        FW[Firewall]
+        DDoS[DDoS Protection]
+        WAF[WAF]
+    end
     
-    service nsg(server)[NSG] in network
-    service fw(server)[Firewall] in network
-    service ddos(internet)[DDoS Protection] in network
-    service waf(internet)[WAF] in network
+    subgraph Data["Data Protection"]
+        Encryption[Encryption]
+        KeyVault[Key Vault]
+        BackupSvc[Backup]
+    end
     
-    service encryption(disk)[Encryption] in data
-    service keyvault(server)[Key Vault] in data
-    service backup_svc(disk)[Backup] in data
+    subgraph Governance["Governance & Compliance"]
+        PolicySvc[Azure Policy]
+        Cost[Cost Management]
+        Defender[Defender]
+        Sentinel[Sentinel]
+    end
     
-    service policy_svc(server)[Azure Policy] in governance
-    service cost(server)[Cost Management] in governance
-    service defender(server)[Defender] in governance
-    service sentinel(server)[Sentinel] in governance
+    Entra --> MFA
+    MFA --> PIM
+    PIM --> NSG
     
-    entra:R --> L:mfa
-    mfa:R --> L:pim
-    pim:B --> T:nsg
+    NSG --> FW
+    FW --> DDoS
+    DDoS --> WAF
     
-    nsg:R --> L:fw
-    fw:R --> L:ddos
-    ddos:R --> L:waf
+    WAF --> Encryption
+    Encryption --> KeyVault
+    KeyVault --> BackupSvc
     
-    waf:B --> T:encryption
-    encryption:R --> L:keyvault
-    keyvault:R --> L:backup_svc
-    
-    backup_svc:B --> T:policy_svc
-    policy_svc:R --> L:cost
-    cost:R --> L:defender
-    defender:R --> L:sentinel
+    BackupSvc --> PolicySvc
+    PolicySvc --> Cost
+    Cost --> Defender
+    Defender --> Sentinel
 ```
 
 **Security Layers:**
