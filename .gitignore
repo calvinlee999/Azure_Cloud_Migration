@@ -1,0 +1,48 @@
+# Azure Migration Project .gitignore
+
+# Sensitive data
+*.credentials
+*.key
+*.pem
+secrets/
+.env
+*.env
+
+# Assessment reports with sensitive information
+assessments/confidential/
+*-confidential.csv
+*-confidential.xlsx
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+~$*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Azure CLI local context
+.azure/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+
+# Node
+node_modules/
+package-lock.json
+
+# PowerShell
+*.ps1.log
